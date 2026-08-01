@@ -1,3 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.venv/
+
 # Ignore all contents of the data folder
 data/*
 # But keep the folder by tracking a placeholder file
