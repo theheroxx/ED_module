@@ -1,0 +1,12 @@
+{
+  "insights": [
+    "Primary driver of ED: air_quality_us-epa-index (|r|=0.82)",
+    "Primary driver of ED: air_quality_PM2.5 (|r|=0.68)",
+    "Redundant inputs (VIF>5) -> math model should keep only one of: ['temperature_celsius', 'apparent_temp_c']",
+    "Heat x pollution interaction confirmed -> keep synergy term in ED baseline"
+  ],
+  "redundant_features": [
+    "temperature_celsius",
+    "apparent_temp_c"
+  ]
+}

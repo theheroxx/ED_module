@@ -1,0 +1,6 @@
+issue,feature,count
+out_of_range,temperature_celsius,1
+out_of_range,wind_kph,1
+out_of_range,uv_index,2
+out_of_range,pressure_mb,2
+out_of_range,air_quality_PM2.5,86

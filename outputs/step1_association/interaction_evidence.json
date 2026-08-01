@@ -1,0 +1,9 @@
+{
+  "mean_ed_overall": 24.843802317787276,
+  "mean_ed_hot_only": 33.54943480112668,
+  "mean_ed_polluted_only": 40.25355507807435,
+  "mean_ed_hot_and_polluted": 78.09916615378799,
+  "expected_if_additive": 48.959187561413756,
+  "synergy_excess": 29.139978592374234,
+  "n_hot_and_polluted": 10797
+}

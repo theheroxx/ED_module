@@ -1,0 +1,7 @@
+{
+  "n_records": 146370,
+  "n_anomalies": 6039,
+  "anomaly_rate_pct": 4.13,
+  "flagged_by_multiple_methods": 6037,
+  "data_quality_issues": 5
+}

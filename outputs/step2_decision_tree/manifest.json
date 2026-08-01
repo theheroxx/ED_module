@@ -1,0 +1,14 @@
+{
+  "step": "step2_decision_tree",
+  "created_utc": "2026-07-27T10:52:46.002442+00:00",
+  "artifacts": {
+    "feature_importances": "E:\\exercise_danger_system\\outputs\\step2_decision_tree\\feature_importances.csv",
+    "critical_thresholds": "E:\\exercise_danger_system\\outputs\\step2_decision_tree\\critical_thresholds.csv",
+    "decision_rules_text": "E:\\exercise_danger_system\\outputs\\step2_decision_tree\\decision_rules.txt",
+    "metrics": "E:\\exercise_danger_system\\outputs\\step2_decision_tree\\metrics.json"
+  },
+  "r2": 0.9516599034967608,
+  "mae": 3.4886882977905618,
+  "n_train": 117096,
+  "n_test": 29274
+}

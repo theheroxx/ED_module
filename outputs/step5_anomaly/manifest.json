@@ -1,0 +1,15 @@
+{
+  "step": "step5_anomaly",
+  "created_utc": "2026-07-27T10:52:56.127405+00:00",
+  "artifacts": {
+    "anomalies": "E:\\exercise_danger_system\\outputs\\step5_anomaly\\confirmed_anomalies.csv",
+    "full_with_flags": "E:\\exercise_danger_system\\outputs\\step5_anomaly\\dataset_with_anomaly_flags.csv",
+    "data_quality_issues": "E:\\exercise_danger_system\\outputs\\step5_anomaly\\data_quality_issues.csv",
+    "summary": "E:\\exercise_danger_system\\outputs\\step5_anomaly\\anomaly_summary.json"
+  },
+  "n_records": 146370,
+  "n_anomalies": 6039,
+  "anomaly_rate_pct": 4.13,
+  "flagged_by_multiple_methods": 6037,
+  "data_quality_issues": 5
+}

@@ -1,0 +1,19 @@
+{
+  "step": "step6_gnn_prep",
+  "created_utc": "2026-07-27T10:52:57.691165+00:00",
+  "artifacts": {
+    "math_model_predictions": "E:\\exercise_danger_system\\outputs\\step6_gnn_prep\\math_model_predictions.csv",
+    "cluster_assignments": "E:\\exercise_danger_system\\outputs\\step6_gnn_prep\\cluster_assignments.csv",
+    "gnn_graph_data": "E:\\exercise_danger_system\\outputs\\step6_gnn_prep\\gnn_graph_data.json"
+  },
+  "n_locations": 489,
+  "optimized_features": [
+    "air_quality_PM2.5",
+    "temperature_celsius",
+    "air_quality_us-epa-index",
+    "uv_index"
+  ],
+  "source_clusters": "E:\\exercise_danger_system\\outputs\\step3_clustering\\location_clusters.csv",
+  "source_graph": "E:\\exercise_danger_system\\outputs\\step3_clustering\\gnn_graph_data.json",
+  "source_math": "E:\\exercise_danger_system\\outputs\\math_model\\math_model_predictions.csv"
+}

@@ -1,0 +1,27 @@
+{
+  "step": "step3_clustering",
+  "created_utc": "2026-07-27T10:52:47.846181+00:00",
+  "artifacts": {
+    "location_clusters": "E:\\exercise_danger_system\\outputs\\step3_clustering\\location_clusters.csv",
+    "cluster_profiles": "E:\\exercise_danger_system\\outputs\\step3_clustering\\cluster_profiles.csv",
+    "gnn_graph_data": "E:\\exercise_danger_system\\outputs\\step3_clustering\\gnn_graph_data.json",
+    "cluster_analysis_report": "E:\\exercise_danger_system\\outputs\\step3_clustering\\cluster_analysis_report.png"
+  },
+  "n_locations": 489,
+  "k": 6,
+  "silhouette": 0.26785589168798607,
+  "features_used": [
+    "temperature_celsius",
+    "humidity",
+    "wind_kph",
+    "uv_index",
+    "air_quality_us-epa-index",
+    "pressure_mb",
+    "abs_latitude",
+    "temp_amplitude",
+    "phase_sin",
+    "phase_cos"
+  ],
+  "min_cluster_size": 3,
+  "silhouette_ratio": 0.65
+}

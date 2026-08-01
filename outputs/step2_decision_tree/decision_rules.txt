@@ -1,0 +1,46 @@
+|--- air_quality_PM2.5 <= 40.38
+|   |--- temperature_celsius <= 27.85
+|   |   |--- air_quality_PM2.5 <= 15.46
+|   |   |   |--- temperature_celsius <= 25.65
+|   |   |   |   |--- value: [7.62]
+|   |   |   |--- temperature_celsius >  25.65
+|   |   |   |   |--- value: [14.93]
+|   |   |--- air_quality_PM2.5 >  15.46
+|   |   |   |--- uv_index <= 4.85
+|   |   |   |   |--- value: [19.83]
+|   |   |   |--- uv_index >  4.85
+|   |   |   |   |--- value: [26.58]
+|   |--- temperature_celsius >  27.85
+|   |   |--- air_quality_us-epa-index <= 1.50
+|   |   |   |--- apparent_temp_c <= 34.95
+|   |   |   |   |--- value: [24.84]
+|   |   |   |--- apparent_temp_c >  34.95
+|   |   |   |   |--- value: [35.87]
+|   |   |--- air_quality_us-epa-index >  1.50
+|   |   |   |--- apparent_temp_c <= 35.05
+|   |   |   |   |--- value: [38.30]
+|   |   |   |--- apparent_temp_c >  35.05
+|   |   |   |   |--- value: [53.29]
+|--- air_quality_PM2.5 >  40.38
+|   |--- apparent_temp_c <= 28.85
+|   |   |--- air_quality_us-epa-index <= 3.50
+|   |   |   |--- uv_index <= 4.35
+|   |   |   |   |--- value: [37.15]
+|   |   |   |--- uv_index >  4.35
+|   |   |   |   |--- value: [43.99]
+|   |   |--- air_quality_us-epa-index >  3.50
+|   |   |   |--- air_quality_PM2.5 <= 150.22
+|   |   |   |   |--- value: [58.43]
+|   |   |   |--- air_quality_PM2.5 >  150.22
+|   |   |   |   |--- value: [87.20]
+|   |--- apparent_temp_c >  28.85
+|   |   |--- air_quality_PM2.5 <= 65.42
+|   |   |   |--- apparent_temp_c <= 35.95
+|   |   |   |   |--- value: [70.69]
+|   |   |   |--- apparent_temp_c >  35.95
+|   |   |   |   |--- value: [87.09]
+|   |   |--- air_quality_PM2.5 >  65.42
+|   |   |   |--- apparent_temp_c <= 30.95
+|   |   |   |   |--- value: [93.07]
+|   |   |   |--- apparent_temp_c >  30.95
+|   |   |   |   |--- value: [99.33]

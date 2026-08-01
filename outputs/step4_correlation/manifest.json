@@ -1,0 +1,18 @@
+{
+  "step": "step4_correlation",
+  "created_utc": "2026-07-27T10:52:48.689939+00:00",
+  "artifacts": {
+    "correlation_matrix_pearson": "E:\\exercise_danger_system\\outputs\\step4_correlation\\correlation_matrix_pearson.csv",
+    "correlation_matrix_spearman": "E:\\exercise_danger_system\\outputs\\step4_correlation\\correlation_matrix_spearman.csv",
+    "vif_multicollinearity": "E:\\exercise_danger_system\\outputs\\step4_correlation\\vif_multicollinearity.csv",
+    "component_decomposition": "E:\\exercise_danger_system\\outputs\\step4_correlation\\component_decomposition.csv",
+    "interaction_strength": "E:\\exercise_danger_system\\outputs\\step4_correlation\\interaction_strength.csv",
+    "model_insights": "E:\\exercise_danger_system\\outputs\\step4_correlation\\model_insights.json",
+    "correlation_heatmap": "E:\\exercise_danger_system\\outputs\\step4_correlation\\correlation_heatmap.png"
+  },
+  "redundant_features": [
+    "temperature_celsius",
+    "apparent_temp_c"
+  ],
+  "n_insights": 4
+}

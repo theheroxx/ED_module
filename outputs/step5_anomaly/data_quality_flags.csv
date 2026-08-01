@@ -1,0 +1,5 @@
+issue,feature,count,range
+out_of_range,temperature_celsius,1,"[-70,60]"
+out_of_range,wind_kph,3,"[0,250]"
+out_of_range,uv_index,2,"[0,16]"
+out_of_range,pressure_mb,2,"[850,1090]"
