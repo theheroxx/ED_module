@@ -17,13 +17,17 @@ Usage:
 from __future__ import annotations
 import sys
 from pathlib import Path
+
+# Add project root to path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import pandas as pd
 import numpy as np
 import json
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import RobustScaler
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 import config
 from common.grid_processor import convert_grid_data, aggregate_grid_points
 from common.pollution import pm25_to_aqi, pm10_to_aqi, aqi_to_epa_index
@@ -46,18 +50,21 @@ def prepare_grid_for_gnn():
     
     print(f"📊 Loading grid data from {grid_path}")
     df = pd.read_csv(grid_path)
+    print(f"   Loaded {len(df)} records")
     
-    # 2. Convert units
+    # 2. Convert units and clean missing values
     df = convert_grid_data(df)
-    print(f"   ✅ Converted: {len(df)} records")
+    print(f"   ✅ Converted and cleaned: {len(df)} records remain after dropping missing values")
+    
+    # If no data left, exit
+    if len(df) == 0:
+        raise ValueError("No valid data after cleaning missing values. Check your input file.")
     
     # 3. Aggregate to grid point features
     grid_features = aggregate_grid_points(df)
     print(f"   ✅ Aggregated to {len(grid_features)} unique grid points")
     
-    # 4. Compute EPA index for each grid point (already in grid_features as epa_mean/epa_max)
-    # Use epa_max for worst-case, or epa_mean for average
-    # We'll use epa_max for safety
+    # 4. Compute EPA index for each grid point (use epa_max for worst-case)
     grid_features['epa_index'] = grid_features['epa_max'].fillna(1).astype(int)
     
     # 5. Compute math scores for each grid point
@@ -105,7 +112,6 @@ def prepare_grid_for_gnn():
     X = grid_features[feature_cols].values
     
     # Normalize features (Robust scaling)
-    from sklearn.preprocessing import RobustScaler
     scaler = RobustScaler()
     X_scaled = scaler.fit_transform(X)
     

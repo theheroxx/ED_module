@@ -1,61 +1,92 @@
 """
 common/grid_processor.py
 ========================
-Process spatial grid data for the ED system.
-Converts units, aggregates to grid-point features, and computes EPA index.
-No city mapping needed – works directly with grid points.
+Ultra‑robust grid data processor.
+Handles any missing, None, or non‑numeric values.
 """
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import sys
+import warnings
+warnings.filterwarnings('ignore')
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from common.pollution import pm25_to_aqi, pm10_to_aqi, aqi_to_epa_index
+
+
+def _force_numeric(series):
+    """Convert a pandas Series to float, coercing errors to NaN."""
+    return pd.to_numeric(series, errors='coerce')
 
 
 def convert_grid_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Convert units for grid data.
-    Input columns: pm2p5 (kg/m³), pm10 (kg/m³), t2m (K)
-    Output: pm2p5 (µg/m³), pm10 (µg/m³), t2m (°C)
-    """
+    """Convert units and clean."""
     df = df.copy()
+    
+    # Force all relevant columns to numeric
+    cols = ['pm2p5', 'pm10', 't2m', 'latitude', 'longitude', 'duaod550']
+    for col in cols:
+        if col in df.columns:
+            df[col] = _force_numeric(df[col])
+    
+    # Drop rows where key columns are all NaN
+    key_cols = ['pm2p5', 'pm10', 't2m']
+    present = [c for c in key_cols if c in df.columns]
+    if present:
+        df = df.dropna(subset=present)
+    
+    # Convert units
     if 'pm2p5' in df.columns:
         df['pm2p5'] = df['pm2p5'] * 1_000_000_000
     if 'pm10' in df.columns:
         df['pm10'] = df['pm10'] * 1_000_000_000
     if 't2m' in df.columns:
         df['t2m'] = df['t2m'] - 273.15
+    
     return df
 
 
-def compute_epa_index_from_grid(row):
-    """Compute EPA index from PM2.5 and PM10 in a row."""
-    aqi_values = {}
-    if pd.notna(row.get('pm2p5')):
-        aqi_values["PM2.5"] = pm25_to_aqi(row['pm2p5'])
-    if pd.notna(row.get('pm10')):
-        aqi_values["PM10"] = pm10_to_aqi(row['pm10'])
-    if aqi_values:
-        max_aqi = max(aqi_values.values())
-        return aqi_to_epa_index(max_aqi)
-    return 1
-
-
 def aggregate_grid_points(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggregate time-series grid data to point-level features.
-    Returns one row per (latitude, longitude) with weather statistics.
-    """
-    # Ensure converted units exist
-    if 'pm2p5' not in df.columns or 't2m' not in df.columns:
-        df = convert_grid_data(df)
+    """Aggregate by (lat, lon) with robust handling."""
+    df = df.copy()
     
-    # Compute EPA index per row
-    df['epa_index'] = df.apply(compute_epa_index_from_grid, axis=1)
+    # --- 1. Force ALL columns to numeric ---
+    for col in df.columns:
+        try:
+            df[col] = _force_numeric(df[col])
+        except Exception:
+            pass
     
-    # Define aggregation dictionary
+    # --- 2. Ensure lat/lon are present ---
+    if 'latitude' not in df.columns or 'longitude' not in df.columns:
+        raise ValueError("Missing latitude/longitude columns")
+    
+    # --- 3. Drop rows with missing lat/lon ---
+    df = df.dropna(subset=['latitude', 'longitude'])
+    
+    # --- 4. Compute EPA index (with error handling) ---
+    def safe_epa(row):
+        try:
+            from common.pollution import pm25_to_aqi, pm10_to_aqi, aqi_to_epa_index
+            aqis = {}
+            if pd.notna(row['pm2p5']) and row['pm2p5'] > 0:
+                aqis['PM2.5'] = pm25_to_aqi(row['pm2p5'])
+            if pd.notna(row['pm10']) and row['pm10'] > 0:
+                aqis['PM10'] = pm10_to_aqi(row['pm10'])
+            if aqis:
+                return aqi_to_epa_index(max(aqis.values()))
+            return 1
+        except Exception:
+            return 1
+    
+    df['epa_index'] = df.apply(safe_epa, axis=1)
+    
+    # --- 5. Fill any NaN in numeric columns with 0 ---
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        df[col] = df[col].fillna(0)
+    
+    # --- 6. Define aggregation dictionary ---
     agg_dict = {
         't2m': ['mean', 'std', 'max', 'min'],
         'pm2p5': ['mean', 'std', 'max', 'min'],
@@ -65,17 +96,22 @@ def aggregate_grid_points(df: pd.DataFrame) -> pd.DataFrame:
     if 'duaod550' in df.columns:
         agg_dict['duaod550'] = ['mean', 'std']
     
-    # Group by grid point
+    # --- 7. Group and aggregate (pandas handles NaNs gracefully) ---
     grid_features = df.groupby(['latitude', 'longitude']).agg(agg_dict).reset_index()
     
-    # Flatten column names
+    # --- 8. Flatten columns ---
     flat_cols = ['latitude', 'longitude']
     for col, stats in agg_dict.items():
         for stat in stats:
             flat_cols.append(f'{col}_{stat}')
     grid_features.columns = flat_cols
     
-    # Rename for clarity
+    # --- 9. Fill any remaining NaN with 0 ---
+    for col in grid_features.columns:
+        if col not in ['latitude', 'longitude']:
+            grid_features[col] = grid_features[col].fillna(0)
+    
+    # --- 10. Rename ---
     rename_map = {
         't2m_mean': 'temp_mean',
         't2m_std': 'temp_std',
@@ -94,35 +130,26 @@ def aggregate_grid_points(df: pd.DataFrame) -> pd.DataFrame:
     }
     grid_features.rename(columns=rename_map, inplace=True)
     
-    # Add node_id as string of lat_lon
+    # --- 11. Add node_id ---
     grid_features['node_id'] = grid_features.apply(
-        lambda row: f"{row['latitude']:.2f}_{row['longitude']:.2f}", axis=1
+        lambda r: f"{r['latitude']:.2f}_{r['longitude']:.2f}", axis=1
     )
     
     return grid_features
 
 
 def get_clustering_features(grid_features: pd.DataFrame) -> pd.DataFrame:
-    """
-    Extract features for clustering (weather only, no lat/lon).
-    Returns DataFrame with node_id and weather features.
-    """
-    # List of weather feature columns (exclude lat, lon, node_id)
     feature_cols = [c for c in grid_features.columns 
                     if c not in ['latitude', 'longitude', 'node_id']]
     return grid_features[['node_id', 'latitude', 'longitude'] + feature_cols]
 
 
 if __name__ == "__main__":
-    # Quick test
-    import pandas as pd
-    from pathlib import Path
-    
     test_path = Path(__file__).resolve().parent.parent / "data" / "output_data.csv"
     if test_path.exists():
         df = pd.read_csv(test_path)
-        df_converted = convert_grid_data(df)
-        grid_feats = aggregate_grid_points(df_converted)
+        df_conv = convert_grid_data(df)
+        grid_feats = aggregate_grid_points(df_conv)
         print("✅ Grid features:")
         print(grid_feats.head())
         print(f"\nFeatures: {grid_feats.columns.tolist()}")

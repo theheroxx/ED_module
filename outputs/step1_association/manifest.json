@@ -1,6 +1,6 @@
 {
   "step": "step1_association_rules",
-  "created_utc": "2026-07-27T10:52:45.705564+00:00",
+  "created_utc": "2026-08-02T07:51:46.713664+00:00",
   "artifacts": {
     "association_rules": "E:\\exercise_danger_system\\outputs\\step1_association\\association_rules.csv",
     "danger_scenario_frequency": "E:\\exercise_danger_system\\outputs\\step1_association\\danger_scenario_frequency.csv",
