@@ -4,6 +4,11 @@ STEP 3 – CLUSTERING (final, with visualization report)
 - Selects k using silhouette_ratio (default 0.65) – picks k=6 for your dataset.
 - Enforces min_cluster_size=3.
 - Saves a comprehensive Matplotlib report alongside the CSV/JSON outputs.
+
+UPDATED (2026-08-01):
+  - Added support for grid-based time-series data (from output_data.csv)
+  - Auto-detects if grid data exists and uses it; falls back to city data
+  - Grid data uses weather-only features (no lat/lon as features)
 """
 from __future__ import annotations
 import sys
@@ -37,6 +42,16 @@ BASE_FEATURES = [
     "abs_latitude",
 ]
 
+# Grid-specific feature names (after conversion and aggregation)
+GRID_FEATURES = [
+    "temp_mean", "temp_std", "temp_max", "temp_min",
+    "pm25_mean", "pm25_std", "pm25_max", "pm25_min",
+    "pm10_mean", "pm10_std", "pm10_max", "pm10_min",
+    "epa_mean", "epa_max",
+    # AOD if available
+    "duaod550_mean", "duaod550_std",
+]
+
 
 class ExerciseDangerClusterAnalyzer:
     def __init__(self, k_max=config.CLUSTER_MAX_K, min_cluster_size=3, silhouette_ratio=0.65):
@@ -49,9 +64,10 @@ class ExerciseDangerClusterAnalyzer:
         self._seasonal_cols = []
         self._Xs_scaled = None   # for visualization
         self._pca = None         # for visualization
+        self._is_grid = False    # flag to indicate grid data usage
 
     # ------------------------------------------------------------------------
-    # 1. AGGREGATE BY LOCATION
+    # 1. AGGREGATE BY LOCATION (original city-based)
     # ------------------------------------------------------------------------
     def aggregate_locations(self, df):
         keys = [k for k in config.LOCATION_KEYS if k in df.columns]
@@ -100,31 +116,71 @@ class ExerciseDangerClusterAnalyzer:
 
         loc = loc.reset_index()
         self.location_df = loc
+        self._is_grid = False
         return loc
 
     # ------------------------------------------------------------------------
-    # 2. CLUSTERING (with silhouette_ratio selection)
+    # 1b. AGGREGATE FROM GRID DATA (new time-series)
+    # ------------------------------------------------------------------------
+    def aggregate_grid_data(self, grid_features_path=None):
+        """
+        Load pre-aggregated grid features (from common.grid_processor) and store.
+        """
+        from common.grid_processor import get_clustering_features
+        if grid_features_path is None:
+            grid_features_path = Path(config.OUTPUTS_DIR) / "gnn_grid_data" / "grid_features.csv"
+        
+        if not grid_features_path.exists():
+            raise FileNotFoundError(f"Grid features not found: {grid_features_path}")
+        
+        df = pd.read_csv(grid_features_path)
+        print(f"   Loaded {len(df)} grid points from {grid_features_path}")
+        
+        # Keep only necessary columns for clustering (weather features)
+        # We already have the features in the DataFrame; no need to re-aggregate.
+        # But we need to rename columns to match expected structure for downstream.
+        # We'll store as-is; cluster method will use a different feature list.
+        self.location_df = df
+        self._is_grid = True
+        return df
+
+    # ------------------------------------------------------------------------
+    # 2. CLUSTERING (supports both city and grid data)
     # ------------------------------------------------------------------------
     def cluster(self, max_k=None):
         if max_k is None:
             max_k = self.k_max
 
         loc = self.location_df
+        if loc is None:
+            raise ValueError("No data loaded. Call aggregate_locations() or aggregate_grid_data() first.")
 
         # ---- Build feature list ----
-        feats = [f for f in BASE_FEATURES if f in loc.columns]
-        for col in self._seasonal_cols:
-            if col in loc.columns:
-                feats.append(col)
-
-        if "air_quality_us-epa-index" not in feats and "air_quality_PM2.5" in loc.columns:
-            feats.append("air_quality_PM2.5")
-
-        if len(feats) < 3:
-            fallback = ["temperature_celsius", "abs_latitude", "humidity"]
-            feats = [f for f in fallback if f in loc.columns]
-
-        print(f"   Initial features: {feats}")
+        if self._is_grid:
+            # Use grid-specific features
+            feats = [f for f in GRID_FEATURES if f in loc.columns]
+            # If AOD columns missing, skip them
+            if "duaod550_mean" not in loc.columns:
+                feats = [f for f in feats if "duaod550" not in f]
+            # Ensure we have enough features
+            if len(feats) < 3:
+                # Fallback to basic weather stats
+                feats = ["temp_mean", "pm25_mean", "pm10_mean"]
+                if "epa_mean" in loc.columns:
+                    feats.append("epa_mean")
+            print(f"   Grid features: {feats}")
+        else:
+            # City-based features (original logic)
+            feats = [f for f in BASE_FEATURES if f in loc.columns]
+            for col in self._seasonal_cols:
+                if col in loc.columns:
+                    feats.append(col)
+            if "air_quality_us-epa-index" not in feats and "air_quality_PM2.5" in loc.columns:
+                feats.append("air_quality_PM2.5")
+            if len(feats) < 3:
+                fallback = ["temperature_celsius", "abs_latitude", "humidity"]
+                feats = [f for f in fallback if f in loc.columns]
+            print(f"   City features: {feats}")
 
         # ---- Clean ----
         X = loc[feats].apply(pd.to_numeric, errors="coerce")
@@ -225,13 +281,17 @@ class ExerciseDangerClusterAnalyzer:
     def profiles(self):
         loc = self.location_df
         if "ed_score" not in loc.columns:
-            return pd.DataFrame()
+            # For grid data, we might not have ed_score; compute from math_danger_score if present
+            if "math_danger_score" in loc.columns:
+                loc["ed_score"] = loc["math_danger_score"]
+            else:
+                return pd.DataFrame()
         prof = (loc.groupby("cluster")
                    .agg(n_locations=("cluster", "size"),
                         mean_ed=("ed_score", "mean"),
-                        mean_temp=("temperature_celsius", "mean") if "temperature_celsius" in loc else ("ed_score", "mean"),
+                        mean_temp=("temperature_celsius", "mean") if "temperature_celsius" in loc else ("temp_mean", "mean") if "temp_mean" in loc else ("ed_score", "mean"),
                         mean_hum=("humidity", "mean") if "humidity" in loc else ("ed_score", "mean"),
-                        mean_aqi=("air_quality_us-epa-index", "mean") if "air_quality_us-epa-index" in loc else ("ed_score", "mean"))
+                        mean_aqi=("air_quality_us-epa-index", "mean") if "air_quality_us-epa-index" in loc else ("epa_mean", "mean") if "epa_mean" in loc else ("ed_score", "mean"))
                    .reset_index())
         overall = loc["ed_score"].mean()
         prof["ed_offset_vs_global"] = prof["mean_ed"] - overall
@@ -243,6 +303,8 @@ class ExerciseDangerClusterAnalyzer:
     def build_location_graph(self, similarity_threshold=0.0):
         loc = self.location_df
         Xs = self._Xs
+        if Xs is None:
+            raise ValueError("Clustering must be run before building graph.")
         if np.any(~np.isfinite(Xs)):
             Xs = np.nan_to_num(Xs, nan=0.0, posinf=0.0, neginf=0.0)
         norm = np.linalg.norm(Xs, axis=1, keepdims=True)
@@ -259,8 +321,17 @@ class ExerciseDangerClusterAnalyzer:
         adj = np.where(adj >= similarity_threshold, adj, 0.0)
         adj = np.nan_to_num(adj, nan=0.0, posinf=0.0, neginf=0.0)
 
-        node_ids = loc[[k for k in config.LOCATION_KEYS if k in loc.columns]] \
-            .astype(str).agg(" | ".join, axis=1).tolist()
+        # Generate node ids
+        if self._is_grid and "node_id" in loc.columns:
+            node_ids = loc["node_id"].astype(str).tolist()
+        else:
+            # city-based: use location_name or fallback
+            keys = [k for k in config.LOCATION_KEYS if k in loc.columns]
+            if keys:
+                node_ids = loc[keys].astype(str).agg(" | ".join, axis=1).tolist()
+            else:
+                node_ids = loc.index.astype(str).tolist()
+
         features_clean = np.nan_to_num(loc[self.features].astype(float).values, nan=0.0)
 
         return {
@@ -292,7 +363,6 @@ def plot_cluster_report(loc, Xs_scaled, features, labels, out_dir, title_suffix=
     cluster_sil = sil_df.groupby("cluster")["silhouette"].mean().sort_index()
 
     # --- Feature means per cluster ---
-    # Use the original location_df to get raw means
     cluster_feat_means = loc.groupby("cluster")[features].mean()
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -319,9 +389,7 @@ def plot_cluster_report(loc, Xs_scaled, features, labels, out_dir, title_suffix=
 
     # (3) Feature profiles (grouped bar chart – top 6 features to avoid clutter)
     ax = axes[1, 0]
-    # Normalize features for radar – use z-scores or min-max
     feat_norm = (cluster_feat_means - cluster_feat_means.min()) / (cluster_feat_means.max() - cluster_feat_means.min() + 1e-8)
-    # use a subset of features for readability
     plot_feats = [f for f in features if f in feat_norm.columns][:6]  # limit to 6
     if len(plot_feats) > 0:
         x = np.arange(len(plot_feats))
@@ -365,16 +433,26 @@ def main():
     print("STEP 3: CLUSTERING (final, with visualization report)")
     print("=" * 70)
 
-    df = get_processed_data()
-    print(f"Loaded {len(df)} records from {config.PROCESSED_DATA_PATH}")
+    # Check if grid data is available
+    grid_dir = Path(config.OUTPUTS_DIR) / "gnn_grid_data"
+    grid_features_path = grid_dir / "grid_features.csv"
+    use_grid = grid_features_path.exists()
 
     an = ExerciseDangerClusterAnalyzer(
         k_max=config.CLUSTER_MAX_K,
         min_cluster_size=3,
         silhouette_ratio=0.65
     )
-    an.aggregate_locations(df)
-    print(f"Aggregated to {len(an.location_df)} locations")
+
+    if use_grid:
+        print("📊 Using time-series grid data for clustering.")
+        an.aggregate_grid_data(grid_features_path)
+    else:
+        print("📊 Using city-based data for clustering.")
+        df = get_processed_data()
+        print(f"Loaded {len(df)} records from {config.PROCESSED_DATA_PATH}")
+        an.aggregate_locations(df)
+        print(f"Aggregated to {len(an.location_df)} locations")
 
     loc = an.cluster(max_k=config.CLUSTER_MAX_K)
 
@@ -407,6 +485,7 @@ def main():
                        "features_used": an.features,
                        "min_cluster_size": an.min_cluster_size,
                        "silhouette_ratio": an.silhouette_ratio,
+                       "data_source": "grid" if use_grid else "city",
                    })
 
     print(f"\n✅ Clustering completed.")
