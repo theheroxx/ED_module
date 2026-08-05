@@ -1,6 +1,6 @@
 {
   "step": "step3_clustering",
-  "created_utc": "2026-08-02T07:51:54.035746+00:00",
+  "created_utc": "2026-08-05T11:38:37.899858+00:00",
   "artifacts": {
     "location_clusters": "E:\\exercise_danger_system\\outputs\\step3_clustering\\location_clusters.csv",
     "cluster_profiles": "E:\\exercise_danger_system\\outputs\\step3_clustering\\cluster_profiles.csv",

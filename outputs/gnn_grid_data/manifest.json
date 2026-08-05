@@ -1,6 +1,6 @@
 {
   "step": "gnn_grid_data",
-  "created_utc": "2026-08-02T07:51:43.186263+00:00",
+  "created_utc": "2026-08-05T11:38:18.888198+00:00",
   "artifacts": {
     "node_features": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\node_features.npy",
     "adjacency_matrix": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\adjacency_matrix.npy",
