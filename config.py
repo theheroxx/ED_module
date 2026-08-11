@@ -16,6 +16,9 @@ OUTPUTS_DIR = ROOT / "outputs"
 # Raw input dataset. Drop GlobalWeatherRepository.csv into ./data/
 RAW_DATA_PATH = DATA_DIR / "GlobalWeatherRepository.csv"
 
+# Grid time-series data (optional)
+GRID_DATA_PATH = DATA_DIR / "output_data.csv"
+
 # Cached, fully-processed dataset (raw features + ED baseline columns).
 # Produced ONCE by common.preprocessing.get_processed_data and reused by every
 # step. This is the ONLY cross-step handoff artifact -- no step depends on
@@ -30,6 +33,7 @@ STEP4_OUT = OUTPUTS_DIR / "step4_correlation"
 STEP5_OUT = OUTPUTS_DIR / "step5_anomaly"
 MODEL_OUT = OUTPUTS_DIR / "math_model"
 GNN_OUT = OUTPUTS_DIR / "gnn_adjuster"
+GNN_GRID_DATA = OUTPUTS_DIR / "gnn_grid_data"  # <-- NEW: grid data for GNN
 
 # ----------------------------------------------------------------------------
 # ED baseline category bins (continuous score -> label). Used everywhere.

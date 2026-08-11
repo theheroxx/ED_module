@@ -1,0 +1,32 @@
+{
+  "step": "gnn_grid_data",
+  "created_utc": "2026-08-05T11:38:18.888198+00:00",
+  "artifacts": {
+    "node_features": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\node_features.npy",
+    "adjacency_matrix": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\adjacency_matrix.npy",
+    "targets": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\targets.npy",
+    "node_ids": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\node_ids.json",
+    "grid_features": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\grid_features.csv",
+    "gnn_graph_data": "E:\\exercise_danger_system\\outputs\\gnn_grid_data\\gnn_graph_data.json"
+  },
+  "n_nodes": 1938,
+  "features": [
+    "temp_mean",
+    "temp_std",
+    "temp_max",
+    "temp_min",
+    "pm25_mean",
+    "pm25_std",
+    "pm25_max",
+    "pm25_min",
+    "pm10_mean",
+    "pm10_std",
+    "pm10_max",
+    "pm10_min",
+    "epa_mean",
+    "epa_max",
+    "duaod550_mean",
+    "duaod550_std"
+  ],
+  "source_data": "E:\\exercise_danger_system\\data\\output_data.csv"
+}

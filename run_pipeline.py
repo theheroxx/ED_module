@@ -4,8 +4,10 @@ run_pipeline.py
 Orchestrator. Builds the shared processed dataset, runs all mining steps,
 and then builds the math model dynamically from the reports.
 
-Usage:
-    python run_pipeline.py
+UPDATED (2026-08-01):
+  - Added prepare_grid_data() to process time-series grid data if available
+  - Grid data is prepared before clustering so clustering can use it
+  - Pipeline now auto-detects and uses grid data
 """
 from __future__ import annotations
 import sys
@@ -20,6 +22,27 @@ def build_common():
     print("\n[common] building shared processed dataset...")
     df = get_processed_data(use_cache=False)
     print(f"[common] processed data cached: {df.shape} -> {config.PROCESSED_DATA_PATH}")
+
+
+def prepare_grid_data():
+    """
+    Prepare grid data if output_data.csv exists.
+    This must run before clustering so that clustering can use grid features.
+    """
+    grid_path = Path(config.DATA_DIR) / "output_data.csv"
+    if not grid_path.exists():
+        print("\n[grid] No grid data found (output_data.csv missing). Skipping grid preparation.")
+        return False
+
+    print("\n[grid] Preparing grid data from time-series...")
+    try:
+        from step6_gnn.prepare_grid_for_gnn import prepare_grid_for_gnn
+        prepare_grid_for_gnn()
+        print("[grid] Grid data preparation complete.")
+        return True
+    except Exception as e:
+        print(f"[grid] ERROR preparing grid data: {e}")
+        return False
 
 
 def build_math_model():
@@ -62,9 +85,13 @@ def build_gnn_inputs():
 
 
 def main():
+    # 1. Build common processed data
     build_common()
 
-    # Import and run all steps
+    # 2. Prepare grid data if available (must happen before clustering)
+    prepare_grid_data()
+
+    # 3. Import and run all steps
     from step1_association_rules import association_rules
     from step2_decision_tree import decision_tree
     from step3_clustering import clustering
@@ -77,10 +104,10 @@ def main():
     correlation_analysis.main()
     anomaly_detection.main()
 
-    # --- Build Math Model (also generates math_model_predictions.csv) ---
+    # 4. Build Math Model (also generates math_model_predictions.csv)
     model, predictor = build_math_model()
 
-    # --- Step 6: GNN Preparation ---
+    # 5. Step 6: GNN Preparation
     build_gnn_inputs()
 
     print("\n" + "=" * 70)
