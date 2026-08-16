@@ -21,7 +21,7 @@ from common.pollution import calculate_air_quality_points
 
 
 # ----------------------------------------------------------------------------
-# Physiological indices (unchanged - correct)
+# Physiological indices 
 # ----------------------------------------------------------------------------
 def heat_index_celsius(temp_c, rh):
     temp_c = np.asarray(temp_c, dtype=float)
@@ -53,7 +53,7 @@ def wind_chill_celsius(temp_c, wind_kph):
 
 
 # ----------------------------------------------------------------------------
-# Component point functions (with fixed type consistency)
+# Component point functions 
 # ----------------------------------------------------------------------------
 def _points_heat(apparent_temp_c):
     xp = [27, 32, 41, 54]
@@ -122,7 +122,7 @@ def _score_to_category(score):
 
 
 # ============================================================================
-# SAFETY FLOOR - REDESIGNED to actually work
+# SAFETY FLOOR 
 # ============================================================================
 def _apply_safety_floor(score, components, threshold=70, margin=5):
     """

@@ -1,9 +1,4 @@
-"""
-STEP 6 - GNN PREPARATION (supports both city and grid data)
-============================================================
-Prepares inputs for the GNN from either city-based or grid-based data.
-"""
-from __future__ import annotations
+# step6_gnn/prepare_gnn_inputs.py
 import sys
 from pathlib import Path
 import pandas as pd
@@ -24,7 +19,6 @@ OPTIMIZED_FEATURES = [
 
 
 def prepare_gnn_inputs_from_grid():
-    """Prepare GNN inputs using grid data."""
     print("=" * 70)
     print("STEP 6: GNN PREPARATION (Using Grid Data)")
     print("=" * 70)
@@ -34,11 +28,9 @@ def prepare_gnn_inputs_from_grid():
     if not grid_features_path.exists():
         raise FileNotFoundError(f"Grid features not found: {grid_features_path}")
     
-    # Load grid features
     grid_features = pd.read_csv(grid_features_path)
-    print(f"   ✅ Loaded {len(grid_features)} grid points")
+    print(f"Loaded {len(grid_features)} grid points")
     
-    # Load math scores (targets)
     targets_path = grid_dir / "targets.npy"
     if targets_path.exists():
         math_scores = np.load(targets_path)
@@ -46,11 +38,9 @@ def prepare_gnn_inputs_from_grid():
     else:
         raise FileNotFoundError(f"Targets not found: {targets_path}")
     
-    # Get cluster assignments from clustering step
     cluster_path = Path(config.STEP3_OUT) / "location_clusters.csv"
     if cluster_path.exists():
         cluster_df = pd.read_csv(cluster_path)
-        # Merge cluster IDs by matching node_id
         if 'node_id' not in grid_features.columns:
             grid_features['node_id'] = grid_features.apply(
                 lambda r: f"{r['latitude']:.2f}_{r['longitude']:.2f}", axis=1
@@ -63,55 +53,45 @@ def prepare_gnn_inputs_from_grid():
             cluster_df[['node_id', 'cluster']], on='node_id', how='left'
         )
         grid_features['cluster'] = grid_features['cluster'].fillna(-1).astype(int)
-        print(f"   ✅ Merged clusters: {grid_features['cluster'].nunique()} unique")
+        print(f"Merged clusters: {grid_features['cluster'].nunique()} unique")
     else:
-        print("   ⚠️ No cluster assignments found. Using cluster=-1 for all.")
+        print("No cluster assignments found. Using cluster=-1 for all.")
         grid_features['cluster'] = -1
     
-    # Map grid features to optimized feature names for cluster_assignments.csv
-    # We need: location_name (node_id), cluster, air_quality_PM2.5, temperature_celsius,
-    #          air_quality_us-epa-index, uv_index (placeholder)
-    # Use appropriate columns from grid data
     cluster_assignments = pd.DataFrame({
         'location_name': grid_features['node_id'],
         'cluster': grid_features['cluster'],
         'air_quality_PM2.5': grid_features.get('pm25_mean', 10.0),
         'temperature_celsius': grid_features.get('temp_mean', 20.0),
         'air_quality_us-epa-index': grid_features.get('epa_mean', 1.0),
-        'uv_index': 3.0,  # placeholder, not in grid data
+        'uv_index': 3.0,
     })
     
-    # Create output directory
     out_dir = Path(config.OUTPUTS_DIR) / "step6_gnn_prep"
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    # Save math_model_predictions.csv
     math_df = grid_features[['node_id', 'math_danger_score']].rename(
         columns={'node_id': 'location_name'}
     )
     math_df.to_csv(out_dir / "math_model_predictions.csv", index=False)
-    print(f"      ✅ math_model_predictions.csv ({len(math_df)} rows)")
+    print(f"math_model_predictions.csv ({len(math_df)} rows)")
     
-    # Save cluster_assignments.csv
     cluster_assignments.to_csv(out_dir / "cluster_assignments.csv", index=False)
-    print(f"      ✅ cluster_assignments.csv ({len(cluster_assignments)} rows)")
+    print(f"cluster_assignments.csv ({len(cluster_assignments)} rows)")
     
-    # Copy gnn_graph_data.json from grid_dir if exists
     graph_src = grid_dir / "gnn_graph_data.json"
     graph_dst = out_dir / "gnn_graph_data.json"
     if graph_src.exists():
         shutil.copy(graph_src, graph_dst)
-        print(f"      ✅ gnn_graph_data.json (copied from grid)")
+        print(f"gnn_graph_data.json (copied from grid)")
     else:
-        # Generate from grid_features
         from sklearn.metrics.pairwise import cosine_similarity
-        # Use same features as clustering
+        from sklearn.preprocessing import RobustScaler
+        
         feature_cols = [c for c in grid_features.columns if c not in ['node_id', 'latitude', 'longitude', 'cluster', 'math_danger_score']]
         X = grid_features[feature_cols].values
-        # Normalize
-        from sklearn.preprocessing import RobustScaler
         X_scaled = RobustScaler().fit_transform(X)
-        # Compute adjacency
+        
         sim = cosine_similarity(X_scaled)
         threshold = np.percentile(sim, 70)
         sim[sim < threshold] = 0
@@ -119,7 +99,7 @@ def prepare_gnn_inputs_from_grid():
         row_sums = sim.sum(axis=1, keepdims=True)
         row_sums[row_sums == 0] = 1
         adj = sim / row_sums
-        # Build graph
+        
         graph = {
             "node_ids": grid_features['node_id'].tolist(),
             "node_features": X_scaled.tolist(),
@@ -129,20 +109,19 @@ def prepare_gnn_inputs_from_grid():
         }
         with open(graph_dst, 'w') as f:
             json.dump(graph, f, indent=2)
-        print(f"      ✅ gnn_graph_data.json (generated from grid)")
+        print(f"gnn_graph_data.json (generated from grid)")
     
-    print("\n✅ GNN preparation complete (grid data).")
-    print(f"   Output: {out_dir}")
+    print("\nGNN preparation complete (grid data).")
+    print(f"Output: {out_dir}")
     return out_dir
 
 
 def prepare_gnn_inputs_from_cities():
-    """Original city-based preparation (unchanged)."""
     print("=" * 70)
     print("STEP 6: GNN PREPARATION (City Data)")
     print("=" * 70)
-    print(f"   📊 Optimized features: {OPTIMIZED_FEATURES}")
-    print("   ℹ️  Based on decision tree importance (PM2.5=64.2%, Temp=16.5%)")
+    print(f"Optimized features: {OPTIMIZED_FEATURES}")
+    print("Based on decision tree importance (PM2.5=64.2%, Temp=16.5%)")
     print()
     
     step3_dir = Path(config.STEP3_OUT)
@@ -150,25 +129,25 @@ def prepare_gnn_inputs_from_cities():
     if not clusters_path.exists():
         raise FileNotFoundError(f"Clustering output not found: {clusters_path}")
     clusters_df = pd.read_csv(clusters_path)
-    print(f"   ✅ Loaded clusters: {len(clusters_df)} locations")
+    print(f"Loaded clusters: {len(clusters_df)} locations")
     
     graph_path = step3_dir / "gnn_graph_data.json"
     if not graph_path.exists():
         raise FileNotFoundError(f"Graph data not found: {graph_path}")
     with open(graph_path, 'r') as f:
         graph_data = json.load(f)
-    print(f"   ✅ Loaded graph: {len(graph_data['node_ids'])} nodes")
+    print(f"Loaded graph: {len(graph_data['node_ids'])} nodes")
     
     df = get_processed_data()
     agg_dict = {feature: 'mean' for feature in OPTIMIZED_FEATURES if feature in df.columns}
     location_features = df.groupby('location_name', as_index=False).agg(agg_dict)
-    print(f"   ✅ Loaded weather for {len(location_features)} locations")
+    print(f"Loaded weather for {len(location_features)} locations")
     
     math_path = Path(config.OUTPUTS_DIR) / "math_model" / "math_model_predictions.csv"
     if not math_path.exists():
         raise FileNotFoundError(f"Math predictions not found: {math_path}")
     math_df = pd.read_csv(math_path)
-    print(f"   ✅ Loaded math predictions: {len(math_df)} locations")
+    print(f"Loaded math predictions: {len(math_df)} locations")
     
     clusters_df['location_name'] = clusters_df['location_name'].str.strip()
     location_features['location_name'] = location_features['location_name'].str.strip()
@@ -177,7 +156,7 @@ def prepare_gnn_inputs_from_cities():
     merged_df = clusters_df.merge(location_features, on='location_name', how='left')
     merged_df = merged_df.merge(math_df, on='location_name', how='left')
     merged_df = merged_df.dropna(subset=['cluster', 'math_danger_score'])
-    print(f"   ✅ After merging: {len(merged_df)} complete locations")
+    print(f"After merging: {len(merged_df)} complete locations")
     
     for feat in OPTIMIZED_FEATURES:
         if feat not in merged_df.columns:
@@ -198,22 +177,20 @@ def prepare_gnn_inputs_from_cities():
     
     math_output = merged_df[['location_name', 'math_danger_score']]
     math_output.to_csv(out_dir / "math_model_predictions.csv", index=False)
-    print(f"      ✅ math_model_predictions.csv ({len(math_output)} rows)")
+    print(f"math_model_predictions.csv ({len(math_output)} rows)")
     
     cluster_assignments.to_csv(out_dir / "cluster_assignments.csv", index=False)
-    print(f"      ✅ cluster_assignments.csv ({len(cluster_assignments)} rows)")
+    print(f"cluster_assignments.csv ({len(cluster_assignments)} rows)")
     
     shutil.copy(graph_path, out_dir / "gnn_graph_data.json")
-    print(f"      ✅ gnn_graph_data.json (copied from step3)")
+    print(f"gnn_graph_data.json (copied from step3)")
     
-    print("\n✅ GNN preparation complete (city data).")
-    print(f"   Output: {out_dir}")
+    print("\nGNN preparation complete (city data).")
+    print(f"Output: {out_dir}")
     return out_dir
 
 
 def prepare_gnn_inputs():
-    """Auto-detect data source and prepare accordingly."""
-    # Check if grid data exists
     grid_dir = Path(config.OUTPUTS_DIR) / "gnn_grid_data"
     if grid_dir.exists() and (grid_dir / "grid_features.csv").exists():
         return prepare_gnn_inputs_from_grid()
@@ -222,8 +199,6 @@ def prepare_gnn_inputs():
 
 
 def verify_gnn_inputs():
-    """Verify GNN inputs (unchanged)."""
-    # ... (same as before)
     pass
 
 

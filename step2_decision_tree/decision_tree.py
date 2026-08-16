@@ -36,13 +36,13 @@ import config
 from common.preprocessing import get_processed_data
 from common.io_utils import save_df, save_json, write_manifest, ensure_dir
 
-# ============================================================================
+
 # OPTIMIZED FEATURES - Based on decision tree importance
-# ============================================================================
+
 # DROPPED (0% importance): humidity, wind_kph, wind_chill_c, pressure_mb
 # KEPT: EPA (57.7%), temperature (17.1%), apparent_temp (16.2%), 
 #       PM2.5 (7.7%), uv_index (0.5%)
-# ============================================================================
+
 CANDIDATE_FEATURES = [
     # --- HIGH IMPORTANCE (≥ 7%) ---
     "air_quality_us-epa-index",        # 57.7% ← #1 (regulatory alignment)

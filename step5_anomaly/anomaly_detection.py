@@ -23,7 +23,6 @@ import config
 from common.preprocessing import get_processed_data
 from common.io_utils import save_df, save_json, write_manifest, ensure_dir
 
-# ----------------------------------------------------------------------------
 # Features to check for anomalies
 # ----------------------------------------------------------------------------
 WEATHER_FEATURES = [
@@ -44,9 +43,8 @@ class AnomalyDetector:
         self.contamination = contamination
         self.flags = pd.DataFrame(index=self.df.index)
 
-    # --------------------------------------------------------------------
     # 1. Statistical Outliers (IQR)
-    # --------------------------------------------------------------------
+    # ----==---------------------------
     def statistical_outliers(self):
         """Flag extreme values using IQR with 2.5 * IQR."""
         for col in WEATHER_FEATURES:
@@ -70,9 +68,8 @@ class AnomalyDetector:
             if outlier_series.any():
                 print(f"   • {col}: {outlier_series.sum()} statistical outliers")
 
-    # --------------------------------------------------------------------
-    # 2. Contextual Anomalies (ED component mismatches) - FIXED
-    # --------------------------------------------------------------------
+    # 2. Contextual Anomalies 
+    # --------------------------
     def contextual_anomalies(self):
         """
         Flag records where ED components don't match the category.
@@ -88,7 +85,7 @@ class AnomalyDetector:
             print("   ⚠️ No ED component columns available for contextual anomalies.")
             return
 
-        # We'll build flags safely
+        #building flags safely
         flags = {}
 
         # Rule 1: High ED but low components (data error)
@@ -126,7 +123,8 @@ class AnomalyDetector:
         for key, flag in flags.items():
             self.flags[key] = flag.fillna(False)
 
-    # --------------------------------------------------------------------
+
+
     # 3. ML Outliers (Isolation Forest)
     # --------------------------------------------------------------------
     def ml_outliers(self):
@@ -152,7 +150,8 @@ class AnomalyDetector:
         if self.flags["ml_isolated_forest"].any():
             print(f"   • ML (Isolation Forest): {self.flags['ml_isolated_forest'].sum()}")
 
-    # --------------------------------------------------------------------
+
+
     # 4. Data Quality (sensor range checks)
     # --------------------------------------------------------------------
     def data_quality(self):
@@ -182,7 +181,8 @@ class AnomalyDetector:
             print(f"   • Out of range: {total_oob.sum()}")
         return pd.DataFrame(issues)
 
-    # --------------------------------------------------------------------
+
+
     # 5. Combine and Finalize
     # --------------------------------------------------------------------
     def combine(self):
@@ -222,7 +222,8 @@ class AnomalyDetector:
         return pd.DataFrame()
 
 
-# --------------------------------------------------------------------
+
+
 # Main
 # --------------------------------------------------------------------
 def main():
@@ -238,7 +239,7 @@ def main():
     det = AnomalyDetector(df, contamination=0.05)
 
     # 3. Run all detection methods
-    print("\n🔍 Running anomaly detection methods:")
+    print("\n Running anomaly detection methods:")
     det.statistical_outliers()
     det.contextual_anomalies()
     det.ml_outliers()
@@ -275,12 +276,12 @@ def main():
     # 7. Manifest
     write_manifest(out, "step5_anomaly", artifacts, extra=summary)
 
-    print(f"\n📊 Anomaly Detection Summary:")
-    print(f"   • Records: {summary['n_records']:,}")
-    print(f"   • Anomalies: {summary['n_anomalies']:,} ({summary['anomaly_rate_pct']}%)")
-    print(f"   • Multi-method flags: {summary['flagged_by_multiple_methods']}")
-    print(f"   • Data quality issues: {summary['data_quality_issues']}")
-    print(f"\n📁 Artifacts saved to {out}")
+    print(f"\n Anomaly Detection Summary:")
+    print(f"    Records: {summary['n_records']:,}")
+    print(f"    Anomalies: {summary['n_anomalies']:,} ({summary['anomaly_rate_pct']}%)")
+    print(f"   Multi-method flags: {summary['flagged_by_multiple_methods']}")
+    print(f"   Data quality issues: {summary['data_quality_issues']}")
+    print(f"\nArtifacts saved to {out}")
 
     return det
 

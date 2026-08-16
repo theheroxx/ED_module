@@ -18,6 +18,7 @@ def ensure_dir(path) -> Path:
     return p
 
 
+
 def save_df(df: pd.DataFrame, path) -> Path:
     path = Path(path)
     ensure_dir(path.parent)
@@ -31,6 +32,8 @@ def save_df(df: pd.DataFrame, path) -> Path:
     return path
 
 
+
+
 def save_json(obj, path) -> Path:
     path = Path(path)
     ensure_dir(path.parent)
@@ -40,7 +43,8 @@ def save_json(obj, path) -> Path:
 
 
 def write_manifest(out_dir, step_name: str, artifacts: dict, extra: dict | None = None):
-    """Record what a step produced -> outputs/<step>/manifest.json."""
+
+    #Record what a step produced -> outputs/<step>/manifest.json.
     out_dir = Path(out_dir)
     manifest = {
         "step": step_name,
