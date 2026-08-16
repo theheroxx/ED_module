@@ -1,22 +1,4 @@
-"""
-app.py
-======
-Streamlit interface for Exercise Danger Prediction.
-
-Uses the full Math Model with GNN regional adjustments:
-    - EPA Index as primary (57.7% importance)
-    - PM2.5 fine-tuning within EPA category
-    - Multi-pollutant penalty when 2+ pollutants have AQI > 100
-    - GNN regional adjustments (grid-based, 1938 nodes)
-
-Fixes applied:
-    • Uses the retry-aware weather_client (no more silent 30s hangs)
-    • Displays clean, actionable error messages on timeout / connection failure
-    • Health check on startup so users know if the API is reachable
-    • Prediction call is wrapped in try/except with a proper spinner
-    • No unit conversion in app – API now returns values in correct units (ppm for gases)
-    • Handles large O3 values gracefully (clamps to max 0.5)
-"""
+# APP.PY for testing the ED module
 import streamlit as st
 import numpy as np
 import sys
@@ -36,29 +18,17 @@ from common.pollution import (
     calculate_multi_pollutant_penalty,
 )
 
-# Import the math model
 from math_model.math_model import ExerciseDangerMathModel
-
-# Import the weather client (retry-aware, session-based)
 from api.weather_client import get_weather, health_check, API_BASE_URL
 
-# Initialize the math model (loads GNN bias map automatically)
 model = ExerciseDangerMathModel()
 
-
-# --------------------------------------------------------------------
-# Helper: apparent temperature (simplified)
-# --------------------------------------------------------------------
 def apparent_temp(temp, humidity):
     if temp < 20:
         return temp
     hi = temp + 0.33 * humidity * 0.01 - 0.7 * (temp - 20)
     return max(temp, hi)
 
-
-# --------------------------------------------------------------------
-# Helper: category to color
-# --------------------------------------------------------------------
 def category_color(category):
     mapping = {
         "ED_VERY_SAFE": "green",
@@ -69,10 +39,8 @@ def category_color(category):
     }
     return mapping.get(category, "gray")
 
-
 def category_clean(category):
     return category.replace("ED_", "").replace("_", " ").title()
-
 
 EPA_LABELS = {
     1: "Good",
@@ -83,10 +51,6 @@ EPA_LABELS = {
     6: "Hazardous",
 }
 
-
-# --------------------------------------------------------------------
-# Page config
-# --------------------------------------------------------------------
 st.set_page_config(
     page_title="Exercise Danger Predictor",
     page_icon="🏃",
@@ -94,50 +58,42 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-
-# --------------------------------------------------------------------
-# Main UI
-# --------------------------------------------------------------------
 def main():
-    st.title("🏃 Exercise Danger Prediction System")
+    st.title("Exercise Danger Prediction System")
     st.markdown("### Medically Grounded Baseline + Grid-Based GNN Regional Adjustments")
     st.markdown("---")
 
-    # ─── Backend health check ──────────────────────────────────────
     with st.sidebar:
-        st.markdown("### 🔌 Backend Status")
+        st.markdown("### Backend Status")
         st.caption(f"API URL: `{API_BASE_URL}`")
         if health_check():
-            st.success("API is reachable ✅")
+            st.success("API is reachable")
         else:
             st.error(
-                "API is NOT reachable ❌\n\n"
+                "API is NOT reachable\n\n"
                 "Start it with:\n\n"
                 "`python -m uvicorn api.ed_api:app --host 0.0.0.0 --port 8000`"
             )
 
-    # Show bias map status
     if model.bias_map:
-        st.info(f"✅ GNN regional adjustments loaded for {len(model.bias_map)} clusters (grid-based)")
+        st.info(f"GNN regional adjustments loaded for {len(model.bias_map)} clusters (grid-based)")
     else:
-        st.warning("⚠️ No GNN regional adjustments loaded. Using baseline only.")
+        st.warning("No GNN regional adjustments loaded. Using baseline only.")
 
-    st.subheader("🌡️ Environmental Conditions")
+    st.subheader("Environmental Conditions")
 
-    # ─── City and Weather Fetch ────────────────────────────────────
     col_city, col_button = st.columns([3, 1])
     with col_city:
         city = st.text_input("City name", "Tehran")
     with col_button:
-        fetch_weather = st.button("🌤️ Fetch Weather", type="secondary")
+        fetch_weather = st.button("Fetch Weather", type="secondary")
 
     if fetch_weather and city:
         with st.spinner(f"Fetching weather for {city}... (up to ~45s with retries)"):
             try:
                 weather = get_weather(city)
-                st.success(f"✅ Weather data for {weather.get('city', city)}")
+                st.success(f"Weather data for {weather.get('city', city)}")
 
-                # Store weather values – API now returns correct units
                 st.session_state['temp'] = weather.get('temperature') or weather.get('temperature_celsius', 22.0)
                 st.session_state['humid'] = weather.get('humidity', 45)
                 st.session_state['wind'] = weather.get('wind_kph', 10)
@@ -145,29 +101,23 @@ def main():
 
                 aq = weather.get('air_quality', {}) or {}
 
-                # PM values are already in µg/m³
                 st.session_state['pm25'] = float(aq.get('pm2_5') or 10.0)
                 st.session_state['pm10'] = float(aq.get('pm10') or 0.0)
 
-                # Gas pollutants – API should return ppm, but clamp to safe ranges
-                # O3 max is 0.5 ppm (EPA scale)
                 o3_val = float(aq.get('o3') or 0.0)
                 st.session_state['o3'] = min(max(o3_val, 0.0), 0.5)
 
-                # NO2 max is 2.0 ppm (EPA scale)
                 no2_val = float(aq.get('no2') or 0.0)
                 st.session_state['no2'] = min(max(no2_val, 0.0), 2.0)
 
-                # SO2 max is 1.0 ppm (EPA scale)
                 so2_val = float(aq.get('so2') or 0.0)
                 st.session_state['so2'] = min(max(so2_val, 0.0), 1.0)
 
-                # CO max is 50.0 ppm (EPA scale)
                 co_val = float(aq.get('co') or 0.0)
                 st.session_state['co'] = min(max(co_val, 0.0), 50.0)
 
             except Exception as e:
-                st.error(f"❌ Could not fetch weather: {e}")
+                st.error(f"Could not fetch weather: {e}")
                 st.info(
                     "Troubleshooting:\n"
                     "1. Make sure the FastAPI server is running:\n"
@@ -209,7 +159,6 @@ def main():
         if cluster_id == -1:
             cluster_id = None
 
-    # ---- Compute AQI and EPA ----
     pollutants = {
         "PM2.5": pm25 if pm25 > 0 else None,
         "PM10": pm10 if pm10 > 0 else None,
@@ -243,36 +192,33 @@ def main():
         high_count = sum(1 for aqi in aqi_values.values() if aqi > 100)
 
         if high_count >= 3:
-            penalty_text = f"⚠️ **+5 pts**: {high_count} pollutants with AQI > 100"
+            penalty_text = f"+5 pts: {high_count} pollutants with AQI > 100"
         elif high_count == 2:
-            penalty_text = f"⚠️ **+2 pts**: {high_count} pollutants with AQI > 100"
+            penalty_text = f"+2 pts: {high_count} pollutants with AQI > 100"
         else:
-            penalty_text = "✅ No multi-pollutant penalty"
+            penalty_text = "No multi-pollutant penalty"
 
         st.info(
-            f"📌 **Max AQI: {max_aqi:.0f}** (from {max_pollutant[0]})  |  "
-            f"**EPA Index: {epa_index}** – *{epa_label}*"
+            f"Max AQI: {max_aqi:.0f} (from {max_pollutant[0]})  |  "
+            f"EPA Index: {epa_index} – {epa_label}"
         )
         st.caption(penalty_text)
 
-        with st.expander("📊 Individual Pollutant AQI Values"):
+        with st.expander("Individual Pollutant AQI Values"):
             for name, aqi in sorted(aqi_values.items(), key=lambda x: x[1], reverse=True):
                 epa = aqi_to_epa_index(aqi)
                 high = "🚨" if aqi > 100 else ""
-                st.write(f"- **{name}**: {aqi:.0f} (EPA: {epa}) {high}")
+                st.write(f"- {name}: {aqi:.0f} (EPA: {epa}) {high}")
     else:
         epa_index = 1
         max_aqi = 0
-        st.info("📌 No pollutant data entered. Assuming **Good** air quality (EPA Index: 1)")
+        st.info("No pollutant data entered. Assuming Good air quality (EPA Index: 1)")
         penalty = 0
         high_count = 0
 
-    anomaly_flag = st.checkbox("🚨 Anomaly Override (force 100)", value=False)
+    anomaly_flag = st.checkbox("Anomaly Override (force 100)", value=False)
 
-    # --------------------------------------------------------------------
-    # Predict Button
-    # --------------------------------------------------------------------
-    if st.button("🚀 Predict Exercise Danger", type="primary", use_container_width=True):
+    if st.button("Predict Exercise Danger", type="primary", use_container_width=True):
         app_temp = apparent_temp(temp, humid)
 
         try:
@@ -293,7 +239,7 @@ def main():
                     anomaly_flag=anomaly_flag,
                 )
         except Exception as e:
-            st.error(f"❌ Prediction failed: {e}")
+            st.error(f"Prediction failed: {e}")
             return
 
         score = result["ED"]
@@ -304,9 +250,8 @@ def main():
         confidence_range = result.get("confidence_range", "0 - 100")
         safety_floor = result["safety_floor_activated"]
 
-        # ---- Display Results ----
         st.markdown("---")
-        st.subheader("📊 Results")
+        st.subheader("Results")
 
         color = category_color(category)
         category_display = category_clean(category)
@@ -338,50 +283,46 @@ def main():
 
         st.progress(int(score), text=f"Risk Score: {score:.1f}/100")
 
-        # ---- Regional Adjustment Info ----
         if regional_adjustment != 0:
             adj_text = f"{regional_adjustment:+.2f} points"
             adj_color = "🟢" if regional_adjustment < 0 else "🔴" if regional_adjustment > 0 else "⚪"
-            st.info(f"{adj_color} **Regional Adjustment**: {adj_text} (Cluster {cluster_id if cluster_id is not None else 'N/A'})")
+            st.info(f"{adj_color} Regional Adjustment: {adj_text} (Cluster {cluster_id if cluster_id is not None else 'N/A'})")
 
         if safety_floor:
-            st.warning("⚠️ **Safety Floor Activated**: An extreme component (>70) triggered risk override.")
+            st.warning("Safety Floor Activated: An extreme component (>70) triggered risk override.")
 
-        # ---- Breakdown ----
-        st.markdown("#### 🔍 Score Breakdown")
+        st.markdown("#### Score Breakdown")
         cols = st.columns(5)
         breakdown_items = [
-            ("🌡️ Heat", breakdown.get("heat", 0)),
-            ("💨 Air", breakdown.get("air", 0)),
-            ("☀️ UV", breakdown.get("uv", 0)),
-            ("❄️ Cold", breakdown.get("cold", 0)),
-            ("🔗 Synergy", breakdown.get("synergy", 0)),
+            ("Heat", breakdown.get("heat", 0)),
+            ("Air", breakdown.get("air", 0)),
+            ("UV", breakdown.get("uv", 0)),
+            ("Cold", breakdown.get("cold", 0)),
+            ("Synergy", breakdown.get("synergy", 0)),
         ]
         for col, (label, value) in zip(cols, breakdown_items):
             with col:
                 st.metric(label, f"{value:.1f}")
 
-        # ---- Multi-pollutant info ----
         if high_count >= 2:
-            st.warning(f"⚠️ **Multi-pollutant alert**: {high_count} pollutants have AQI > 100. "
+            st.warning(f"Multi-pollutant alert: {high_count} pollutants have AQI > 100. "
                       f"Air quality score adjusted by +{penalty} points.")
 
-        # ---- Interpretation ----
-        st.markdown("#### 💡 Interpretation")
+        st.markdown("#### Interpretation")
         if anomaly_flag:
-            st.error("🚫 **ANOMALY OVERRIDE**: Exercise not advised.")
+            st.error("ANOMALY OVERRIDE: Exercise not advised.")
         elif score >= 75:
-            st.error("🚫 **EXTREME DANGER**: Do not exercise outdoors.")
+            st.error("EXTREME DANGER: Do not exercise outdoors.")
         elif score >= 50:
-            st.error("🚫 **DANGEROUS**: Limit outdoor exercise severely.")
+            st.error("DANGEROUS: Limit outdoor exercise severely.")
         elif score >= 30:
-            st.warning("⚠️ **CAUTION**: Exercise with care.")
+            st.warning("CAUTION: Exercise with care.")
         elif score >= 15:
-            st.info("ℹ️ **MODERATE SAFE**: Generally safe.")
+            st.info("MODERATE SAFE: Generally safe.")
         else:
-            st.success("✅ **VERY SAFE**: Excellent conditions.")
+            st.success("VERY SAFE: Excellent conditions.")
 
-        with st.expander("🔧 Raw Prediction Output", expanded=False):
+        with st.expander("Raw Prediction Output", expanded=False):
             output = {
                 "ED": score,
                 "Risk_Level": result["Risk_Level"],
@@ -404,9 +345,5 @@ def main():
                     output["pollutants_above_100"] = high_count
             st.json(output)
 
-
-# --------------------------------------------------------------------
-# Run the app
-# --------------------------------------------------------------------
 if __name__ == "__main__":
     main()

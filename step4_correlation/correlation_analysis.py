@@ -37,13 +37,12 @@ from common.preprocessing import get_processed_data
 from common.io_utils import save_df, save_json, write_manifest, ensure_dir
 from common.ed_baseline import COMPONENT_COLS
 
-# ============================================================================
 # OPTIMIZED FEATURES - Based on decision tree importance
-# ============================================================================
+# -------------------------------------------------------
 # DROPPED (0% importance): humidity, wind_kph, wind_chill_c, pressure_mb
 # KEPT: EPA (5.4%), temperature (16.5%), apparent_temp (13.4%), 
 #       PM2.5 (64.2%), uv_index (0.5%)
-# ============================================================================
+# -------------------------------------------------------
 RAW_FEATURES = [
     # --- HIGH IMPORTANCE (≥ 7%) ---
     "air_quality_PM2.5",               # 64.2% ← #1 (root split)

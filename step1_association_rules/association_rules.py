@@ -38,7 +38,7 @@ class ExerciseDangerAssociationMiner:
         self.rules = None
         self.frequent_itemsets = None
 
-    # -- transactions --------------------------------------------------------
+    # -- transactions ------------------------------------------------------
     def _transactions(self, df, include_ed=True):
         cols = ITEM_COLS + (["ed_category"] if include_ed else [])
         return df[cols].astype(str).values.tolist()
@@ -48,7 +48,7 @@ class ExerciseDangerAssociationMiner:
         arr = te.fit(transactions).transform(transactions)
         return pd.DataFrame(arr, columns=te.columns_)
 
-    # -- (A) explainable rules with ED consequent ---------------------------
+    # -- (A) explainable rules with ED consequent ---------------
     def mine_rules(self, df):
         trans = self._transactions(df, include_ed=True)
         enc = self._encode(trans)
@@ -69,7 +69,7 @@ class ExerciseDangerAssociationMiner:
         self.rules = rules.sort_values(["confidence", "lift"], ascending=False)
         return self.rules
 
-    # -- (B) NON-CIRCULAR: danger-scenario frequency ------------------------
+    # - (B) NON-CIRCULAR: danger-scenario frequency ----------------
     def danger_frequency(self, df):
         """How often each raw weather combination actually occurs, and what
         share of those occurrences are dangerous. Uses the raw items only."""
